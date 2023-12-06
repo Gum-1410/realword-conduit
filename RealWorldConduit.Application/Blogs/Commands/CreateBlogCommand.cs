@@ -31,15 +31,18 @@ namespace RealWorldConduit.Application.Blogs.Commands
         }
         public async Task<BaseResponseDTO<BlogDTO>> Handle(CreateBlogCommand request, CancellationToken cancellationToken)
         {
-            var requestFilteredTags = await RequestTagsFilter(request, cancellationToken);
- 
-            var isBlogExisted = await _dbContext.Blogs
-                                      .AsNoTracking()
-                                      .AnyAsync(x => x.Title.Equals(request.Title), cancellationToken);
+            var requestFilteredTags = await RequestFilterTags(request, cancellationToken);
+
+            var isBlogExisted = await _dbContext.Blogs.AnyAsync(x => x.Title.Equals(request.Title) && x.AuthorId == _currentUser.Id, cancellationToken);
+
+            var author = await _dbContext.Users
+                              .AsNoTracking()
+                              .Include(x => x.FollowedUsers)
+                              .FirstOrDefaultAsync(x => x.Id == _currentUser.Id, cancellationToken);
 
             if (isBlogExisted)
             {
-                throw new RestException(HttpStatusCode.BadRequest, $"A blog with {request.Title} title is existed!");
+                throw new RestException(HttpStatusCode.Conflict, $"A blog with {request.Title} title is existed!");
             }
 
             var newBlog = new Blog
@@ -51,49 +54,37 @@ namespace RealWorldConduit.Application.Blogs.Commands
             };
 
             _dbContext.Blogs.Add(newBlog);
-
-            // Add range to BlogTags based on filterd tags
             _dbContext.BlogsTag.AddRange(requestFilteredTags.Select(tag => new BlogTag { Blog = newBlog, Tag = tag }));
 
             await _dbContext.SaveChangesAsync(cancellationToken);
 
-            BlogDTO blogDTO = await MapToBlogDTO(newBlog, cancellationToken);
-
             return new BaseResponseDTO<BlogDTO>
             {
                 Code = HttpStatusCode.OK,
-                Message = $"Successfully create new {newBlog.Title} blog",
-                Data = blogDTO
+                Message = $"Successfully create new {request.Title} blog",
+                Data = new BlogDTO
+                {
+                    Title = newBlog.Title,
+                    Description = newBlog.Description,
+                    Content = newBlog.Content,
+                    TagList = newBlog.BlogTags.Select(x => x.Tag.Name).ToList(),
+                    CreatedAt = newBlog.CreatedAt,
+                    LastUpdatedAt = newBlog.LastUpdatedAt,
+                    Profile = new ProfileDTO
+                    {
+                        Username = author.Username,
+                        Email = author.Email,
+                        Bio = author.Bio,
+                        Following = author.FollowedUsers.Any(x => x.FollowerId == _currentUser.Id),
+                        ProfileImage = author.ProfileImage
+                    },
+                    Favorited = false,
+                    FavoritesCount = 0
+                }
             };
         }
 
-        private async Task<BlogDTO> MapToBlogDTO(Blog blog, CancellationToken cancellationToken)
-        {
-            return await _dbContext.Blogs
-                        .AsNoTracking()
-                        .Select(x => new BlogDTO
-                        {
-                            Title = x.Title,
-                            Description = x.Description,
-                            Content = x.Content,
-                            TagList = x.BlogTags.Select(x => x.Tag.Name).ToList(),
-                            CreatedAt = x.CreatedAt,
-                            LastUpdatedAt = x.LastUpdatedAt,
-                            Profile = new ProfileDTO
-                            {
-                                Username = x.Author.Username,
-                                Email = x.Author.Email,
-                                Bio = x.Author.Bio,
-                                Following = x.Author.FollowedUsers.Any(x => x.FollowerId == _currentUser.Id),
-                                ProfileImage = x.Author.ProfileImage
-                            },
-                            Favorited = x.FavoriteBlogs.Any(x => x.FavoritedById == _currentUser.Id),
-                            FavoritesCount = x.FavoriteBlogs.Count(x => x.BlogId == blog.Id)
-                        })
-                        .FirstOrDefaultAsync(x => x.Title.Equals(blog.Title), cancellationToken);
-        }
-
-        private async Task<List<Tag>> RequestTagsFilter(CreateBlogCommand request, CancellationToken cancellationToken)
+        private async Task<List<Tag>> RequestFilterTags(CreateBlogCommand request, CancellationToken cancellationToken)
         {
             var processedRequestTags = request.TagList.Distinct().ToList();
 

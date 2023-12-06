@@ -11,7 +11,6 @@ namespace RealWorldConduit.Application.Blogs.Commands
     {
         // TODO : Implement Validation Later
         public string Title { get; set; }
-
     }
 
     internal class DeleteBlogCommandHandler : IRequestWithBaseResponseHandler<DeleteCurrentBlogCommand>
@@ -39,7 +38,7 @@ namespace RealWorldConduit.Application.Blogs.Commands
             return new BaseResponseDTO
             {
                 Code = HttpStatusCode.OK,
-                Message = $"Successfully delete {blog.Title} blog",
+                Message = $"Successfully delete {request.Title} blog",
             };
         }
     }

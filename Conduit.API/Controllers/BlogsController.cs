@@ -45,16 +45,16 @@ namespace Conduit.API.Controllers
         [HttpPut("{title}")]
         public async Task<IActionResult> UpdateCurrentBlog([FromBody] UpdateCurrentBlogCommand request, CancellationToken cancellationToken)
         {
-            var newBlog = await _mediator.Send(request, cancellationToken);
-            return Ok(newBlog);
+            var updatedBlog = await _mediator.Send(request, cancellationToken);
+            return Ok(updatedBlog);
         }
 
         [Authorize]
         [HttpDelete("{title}")]
-        public async Task<IActionResult> DeleteCurrentBlog([FromRoute] DeleteCurrentBlogCommand request, CancellationToken cancellationToken)
+        public async Task<IActionResult> DeleteCurrentBlog([FromBody] DeleteCurrentBlogCommand request, CancellationToken cancellationToken)
         {
-            var newBlog = await _mediator.Send(request, cancellationToken);
-            return Ok(newBlog);
+            var result = await _mediator.Send(request, cancellationToken);
+            return Ok(result);
         }
 
         [Authorize]

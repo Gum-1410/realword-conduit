@@ -25,21 +25,22 @@ namespace RealWorldConduit.Application.Blogs.Commands
         public async Task<BaseResponseDTO<BlogDTO>> Handle(LikeBlogCommand request, CancellationToken cancellationToken)
         {
             var blog = await _dbContext.Blogs
-                            .AsNoTracking()
+                            .AsSplitQuery()
+                            .Include(x => x.FavoriteBlogs)
+                            .Include(x => x.Author)
+                                .ThenInclude(y => y.FollowedUsers)
+                            .Include(x => x.BlogTags)
+                                .ThenInclude(y => y.Tag)
                             .FirstOrDefaultAsync(x => x.Title.Equals(request.Title), cancellationToken);
-
-            var isAlreadyFavorited = await _dbContext.FavoriteBlogs
-                                          .AsNoTracking()
-                                          .AnyAsync(x => x.FavoritedById == _currentUser.Id, cancellationToken);
 
             if (blog is null)
             {
                 throw new RestException(HttpStatusCode.NotFound, $"A blog with {request.Title} title is not found!");
             }
 
-            if (isAlreadyFavorited)
+            if (blog.FavoriteBlogs.Any(x => x.FavoritedById == _currentUser.Id))
             {
-                throw new RestException(HttpStatusCode.Found, $"You already like a blog with {request.Title} title!");
+                throw new RestException(HttpStatusCode.Conflict, $"You already like a blog with {request.Title} title!");
             }
 
             _dbContext.FavoriteBlogs.Add(new FavoriteBlog
@@ -47,42 +48,33 @@ namespace RealWorldConduit.Application.Blogs.Commands
                 BlogId = blog.Id,
                 FavoritedById = (Guid)_currentUser.Id,
             });
-            await _dbContext.SaveChangesAsync(cancellationToken);
 
-            BlogDTO blogDTO = await MapToBlogDTO(blog, cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
 
             return new BaseResponseDTO<BlogDTO>
             {
                 Code = HttpStatusCode.OK,
                 Message = $"Successfully like {request.Title} blog",
-                Data = blogDTO
+                Data = new BlogDTO
+                {
+                    Title = blog.Title,
+                    Description = blog.Description,
+                    Content = blog.Content,
+                    TagList = blog.BlogTags.Select(x => x.Tag.Name).ToList(),
+                    CreatedAt = blog.CreatedAt,
+                    LastUpdatedAt = blog.LastUpdatedAt,
+                    Profile = new ProfileDTO
+                    {
+                        Username = blog.Author.Username,
+                        Email = blog.Author.Email,
+                        Bio = blog.Author.Bio,
+                        Following = blog.Author.FollowedUsers.Any(x => x.FollowerId == _currentUser.Id),
+                        ProfileImage = blog.Author.ProfileImage
+                    },
+                    Favorited = blog.FavoriteBlogs.Any(x => x.FavoritedById == _currentUser.Id),
+                    FavoritesCount = blog.FavoriteBlogs.Count()
+                }
             };
-        }
-
-        private async Task<BlogDTO> MapToBlogDTO(Blog blog, CancellationToken cancellationToken)
-        {
-            return await _dbContext.Blogs
-                        .AsNoTracking()
-                        .Select(x => new BlogDTO
-                        {
-                            Title = x.Title,
-                            Description = x.Description,
-                            Content = x.Content,
-                            TagList = x.BlogTags.Select(x => x.Tag.Name).ToList(),
-                            CreatedAt = x.CreatedAt,
-                            LastUpdatedAt = x.LastUpdatedAt,
-                            Profile = new ProfileDTO
-                            {
-                                Username = x.Author.Username,
-                                Email = x.Author.Email,
-                                Bio = x.Author.Bio,
-                                Following = x.Author.FollowedUsers.Any(x => x.FollowerId == _currentUser.Id),
-                                ProfileImage = x.Author.ProfileImage
-                            },
-                            Favorited = x.FavoriteBlogs.Any(x => x.FavoritedById == _currentUser.Id),
-                            FavoritesCount = x.FavoriteBlogs.Count(x => x.BlogId == blog.Id)
-                        })
-                        .FirstOrDefaultAsync(x => x.Title.Equals(blog.Title), cancellationToken);
         }
     }
 }
