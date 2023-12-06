@@ -51,7 +51,7 @@ namespace Conduit.API.Controllers
 
         [Authorize]
         [HttpDelete("{title}")]
-        public async Task<IActionResult> DeleteCurrentBlog([FromBody] DeleteCurrentBlogCommand request, CancellationToken cancellationToken)
+        public async Task<IActionResult> DeleteCurrentBlog([FromRoute] DeleteCurrentBlogCommand request, CancellationToken cancellationToken)
         {
             var result = await _mediator.Send(request, cancellationToken);
             return Ok(result);
