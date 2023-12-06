@@ -10,40 +10,33 @@ using System.Net;
 
 namespace RealWorldConduit.Application.Blogs.Commands
 {
-    public class UpdateCurrentBlogCommand : IRequestWithBaseResponse<BlogDTO>
-    {
-        // TODO : Implement Validation Later
-        public string Title { get; set; }
-        public string Description { get; set; }
-        public string Content { get; set; }
-    }
-
-    internal class UpdateBlogCommandHandler : IRequestWithBaseResponseHandler<UpdateCurrentBlogCommand, BlogDTO>
+    public record UnlikeBlogCommand(string Title) : IRequestWithBaseResponse<BlogDTO>;
+    internal class UnlikeBlogCommandHandler : IRequestWithBaseResponseHandler<UnlikeBlogCommand, BlogDTO>
     {
         private readonly MainDbContext _dbContext;
         private readonly ICurrentUser _currentUser;
 
-        public UpdateBlogCommandHandler(MainDbContext dbContext, ICurrentUser currentUser)
+        public UnlikeBlogCommandHandler(MainDbContext dbContext, ICurrentUser currentUser)
         {
             _dbContext = dbContext;
             _currentUser = currentUser;
         }
-
-        public async Task<BaseResponseDTO<BlogDTO>> Handle(UpdateCurrentBlogCommand request, CancellationToken cancellationToken)
+        public async Task<BaseResponseDTO<BlogDTO>> Handle(UnlikeBlogCommand request, CancellationToken cancellationToken)
         {
             var blog = await _dbContext.Blogs
-                            .FirstOrDefaultAsync(x => x.Title.Equals(request.Title) && x.AuthorId == _currentUser.Id, cancellationToken);
+                            .AsNoTracking()
+                            .FirstOrDefaultAsync(x => x.Title.Equals(request.Title), cancellationToken);
 
-            if (blog is null)
+            var favoritesBlog = await _dbContext.FavoriteBlogs
+                                     .FirstOrDefaultAsync(x => x.BlogId == blog.Id && x.FavoritedById == _currentUser.Id);
+
+            if (blog is null || favoritesBlog is null)
             {
-                throw new RestException(HttpStatusCode.NotFound, $"A blog with {request.Title} title is not found!");
+                throw new RestException(HttpStatusCode.NotFound, $"A blog with {request.Title} title is not found or you haven't like a blog with {request.Title} title yet!");
             }
 
-            blog.Title = request.Title;
-            blog.Description = request.Description;
-            blog.Content = request.Content;
 
-            _dbContext.Blogs.Update(blog);
+            _dbContext.FavoriteBlogs.Remove(favoritesBlog);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             BlogDTO blogDTO = await MapToBlogDTO(blog, cancellationToken);
@@ -51,7 +44,7 @@ namespace RealWorldConduit.Application.Blogs.Commands
             return new BaseResponseDTO<BlogDTO>
             {
                 Code = HttpStatusCode.OK,
-                Message = $"Successfully update {blog.Title} blog",
+                Message = $"Successfully unlike {request.Title} blog",
                 Data = blogDTO
             };
         }

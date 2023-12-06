@@ -10,40 +10,43 @@ using System.Net;
 
 namespace RealWorldConduit.Application.Blogs.Commands
 {
-    public class UpdateCurrentBlogCommand : IRequestWithBaseResponse<BlogDTO>
-    {
-        // TODO : Implement Validation Later
-        public string Title { get; set; }
-        public string Description { get; set; }
-        public string Content { get; set; }
-    }
-
-    internal class UpdateBlogCommandHandler : IRequestWithBaseResponseHandler<UpdateCurrentBlogCommand, BlogDTO>
+    // TODO : Implement Upsert Like A Blog Instead Of Seperate POST And DELETE
+    public record LikeBlogCommand(string Title) : IRequestWithBaseResponse<BlogDTO>;
+    internal class LikeBlogCommandHandler : IRequestWithBaseResponseHandler<LikeBlogCommand, BlogDTO>
     {
         private readonly MainDbContext _dbContext;
         private readonly ICurrentUser _currentUser;
 
-        public UpdateBlogCommandHandler(MainDbContext dbContext, ICurrentUser currentUser)
+        public LikeBlogCommandHandler(MainDbContext dbContext, ICurrentUser currentUser)
         {
             _dbContext = dbContext;
             _currentUser = currentUser;
         }
-
-        public async Task<BaseResponseDTO<BlogDTO>> Handle(UpdateCurrentBlogCommand request, CancellationToken cancellationToken)
+        public async Task<BaseResponseDTO<BlogDTO>> Handle(LikeBlogCommand request, CancellationToken cancellationToken)
         {
             var blog = await _dbContext.Blogs
-                            .FirstOrDefaultAsync(x => x.Title.Equals(request.Title) && x.AuthorId == _currentUser.Id, cancellationToken);
+                            .AsNoTracking()
+                            .FirstOrDefaultAsync(x => x.Title.Equals(request.Title), cancellationToken);
+
+            var isAlreadyFavorited = await _dbContext.FavoriteBlogs
+                                          .AsNoTracking()
+                                          .AnyAsync(x => x.FavoritedById == _currentUser.Id, cancellationToken);
 
             if (blog is null)
             {
                 throw new RestException(HttpStatusCode.NotFound, $"A blog with {request.Title} title is not found!");
             }
 
-            blog.Title = request.Title;
-            blog.Description = request.Description;
-            blog.Content = request.Content;
+            if (isAlreadyFavorited)
+            {
+                throw new RestException(HttpStatusCode.Found, $"You already like a blog with {request.Title} title!");
+            }
 
-            _dbContext.Blogs.Update(blog);
+            _dbContext.FavoriteBlogs.Add(new FavoriteBlog
+            {
+                BlogId = blog.Id,
+                FavoritedById = (Guid)_currentUser.Id,
+            });
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             BlogDTO blogDTO = await MapToBlogDTO(blog, cancellationToken);
@@ -51,7 +54,7 @@ namespace RealWorldConduit.Application.Blogs.Commands
             return new BaseResponseDTO<BlogDTO>
             {
                 Code = HttpStatusCode.OK,
-                Message = $"Successfully update {blog.Title} blog",
+                Message = $"Successfully like {request.Title} blog",
                 Data = blogDTO
             };
         }

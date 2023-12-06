@@ -56,5 +56,21 @@ namespace Conduit.API.Controllers
             var newBlog = await _mediator.Send(request, cancellationToken);
             return Ok(newBlog);
         }
+
+        [Authorize]
+        [HttpPost("{title}/like")]
+        public async Task<IActionResult> LikeBlog([FromRoute] LikeBlogCommand request, CancellationToken cancellationToken)
+        {
+            var result = await _mediator.Send(request, cancellationToken);
+            return Ok(result);
+        }
+
+        [Authorize]
+        [HttpDelete("{title}/like")]
+        public async Task<IActionResult> UnlikeBlog([FromRoute] UnlikeBlogCommand request, CancellationToken cancellationToken)
+        {
+            var result = await _mediator.Send(request, cancellationToken);
+            return Ok(result);
+        }
     }
 }
