@@ -29,8 +29,17 @@ namespace Conduit.API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateNewBlog([FromBody] CreateBlogCommand request, CancellationToken cancellationToken)
         {
-            var newBlog = await _mediator.Send(request, cancellationToken);
-            return Ok(newBlog);
+            try
+            {
+                await _mediator.Send(request, cancellationToken);
+                var newBlog = await _mediator.Send(new GetABlogQuery(request.Title), cancellationToken);
+                return Ok(newBlog);
+
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
         }
 
         [Authorize]
@@ -45,16 +54,42 @@ namespace Conduit.API.Controllers
         [HttpPut("{title}")]
         public async Task<IActionResult> UpdateCurrentBlog([FromBody] UpdateCurrentBlogCommand request, CancellationToken cancellationToken)
         {
-            var newBlog = await _mediator.Send(request, cancellationToken);
-            return Ok(newBlog);
+            try
+            {
+                await _mediator.Send(request, cancellationToken);
+                var updatedBlog = await _mediator.Send(new GetABlogQuery(request.Title), cancellationToken);
+                return Ok(updatedBlog);
+
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
         }
 
         [Authorize]
         [HttpDelete("{title}")]
         public async Task<IActionResult> DeleteCurrentBlog([FromRoute] DeleteCurrentBlogCommand request, CancellationToken cancellationToken)
         {
-            var newBlog = await _mediator.Send(request, cancellationToken);
-            return Ok(newBlog);
+            var result = await _mediator.Send(request, cancellationToken);
+            return Ok(result);
+        }
+
+        [Authorize]
+        [HttpPost("{title}/like")]
+        public async Task<IActionResult> LikeBlogUpsert([FromRoute] LikeBlogUpsertCommand request, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _mediator.Send(request, cancellationToken);
+                var updatedBlog = await _mediator.Send(new GetABlogQuery(request.Title), cancellationToken);
+                return Ok(updatedBlog);
+
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
         }
     }
 }

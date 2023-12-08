@@ -23,7 +23,7 @@ namespace RealWorldConduit.Application.Users.Commands
         public UserRegisterCommandValidator(MainDbContext dbContext)
         {
             _dbContext = dbContext;
-
+         
             RuleFor(x => x.Username).NotEmpty()
                                     .OverridePropertyName("username")
                                     .WithMessage("Invalid username");

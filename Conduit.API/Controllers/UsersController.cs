@@ -72,18 +72,18 @@ namespace Conduit.API.Controllers
 
         [Authorize]
         [HttpPost("{username}/follow")]
-        public async Task<IActionResult> FollowAProfile([FromRoute] FollowAProfileCommand request, CancellationToken cancellationToken)
+        public async Task<IActionResult> FollowAProfile([FromRoute] FollowAProfileUpsertCommand request, CancellationToken cancellationToken)
         {
-            var profile = await _mediator.Send(request, cancellationToken);
-            return Ok(profile);
-        }
-
-        [Authorize]
-        [HttpDelete("{username}/unfollow")]
-        public async Task<IActionResult> UnfollowAProfile([FromRoute] UnfollowAProfileCommand request, CancellationToken cancellationToken)
-        {
-            var profile = await _mediator.Send(request, cancellationToken);
-            return Ok(profile);
-        }
+            try
+            {
+                await _mediator.Send(request, cancellationToken);
+                var profile = await _mediator.Send(new GetAProfileQuery(request.Username), cancellationToken);
+                return Ok(profile);
+            }
+            catch(Exception ex) 
+            {
+                throw;
+            }
+        }      
     }
 }

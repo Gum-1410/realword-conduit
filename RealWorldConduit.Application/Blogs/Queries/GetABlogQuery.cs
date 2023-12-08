@@ -25,26 +25,26 @@ namespace RealWorldConduit.Application.Blogs.Queries
         public async Task<BaseResponseDTO<BlogDTO>> Handle(GetABlogQuery request, CancellationToken cancellationToken)
         {
             var blogDTO = await _dbContext.Blogs.AsNoTracking()
-                                             .Select(x => new BlogDTO
-                                             {
-                                                 Title = x.Title,
-                                                 Description = x.Description,
-                                                 Content = x.Content,
-                                                 TagList = x.BlogTags.Select(x => x.Tag.Name).ToList(),
-                                                 CreatedAt = x.CreatedAt,
-                                                 LastUpdatedAt = x.LastUpdatedAt,
-                                                 Profile = new ProfileDTO
-                                                 {
-                                                     Username = x.Author.Username,
-                                                     Email = x.Author.Email,
-                                                     Bio = x.Author.Bio,
-                                                     Following = x.Author.FollowedUsers.Any(x => x.FollowerId == _currentUser.Id),
-                                                     ProfileImage = x.Author.ProfileImage
-                                                 },
-                                                 Favorited = x.FavoriteBlogs.Any(x => x.FavoritedById == _currentUser.Id),
-                                                 FavoritesCount = x.FavoriteBlogs.Count()
-                                             })
-                                             .FirstOrDefaultAsync(x => x.Title.Equals(request.Title), cancellationToken);
+                                                .Select(x => new BlogDTO
+                                                {
+                                                    Title = x.Title,
+                                                    Description = x.Description,
+                                                    Content = x.Content,
+                                                    TagList = x.BlogTags.Select(x => x.Tag.Name).ToList(),
+                                                    CreatedAt = x.CreatedAt,
+                                                    LastUpdatedAt = x.LastUpdatedAt,
+                                                    Profile = new ProfileDTO
+                                                    {
+                                                        Username = x.Author.Username,
+                                                        Email = x.Author.Email,
+                                                        Bio = x.Author.Bio,
+                                                        Following = x.Author.FollowedUsers.Any(x => x.FollowerId == _currentUser.Id),
+                                                        ProfileImage = x.Author.ProfileImage
+                                                    },
+                                                    Favorited = x.FavoriteBlogs.Any(x => x.FavoritedById == _currentUser.Id),
+                                                    FavoritesCount = x.FavoriteBlogs.Count()
+                                                })
+                                                .FirstOrDefaultAsync(x => x.Title.Equals(request.Title), cancellationToken);
 
             if (blogDTO is null)
             {

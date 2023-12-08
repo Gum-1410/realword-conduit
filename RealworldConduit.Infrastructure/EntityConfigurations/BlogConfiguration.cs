@@ -10,7 +10,9 @@
             builder.Property(x => x.Description).IsRequired().HasMaxLength(250);
             builder.Property(x => x.Content).IsRequired();
 
+
             builder.HasIndex(x => x.Title).IsUnique();
+
 
             builder.HasOne(x => x.Author)
                    .WithMany(x => x.Blogs)
