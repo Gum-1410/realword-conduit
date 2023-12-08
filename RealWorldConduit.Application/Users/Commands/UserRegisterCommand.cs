@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using RealworldConduit.Infrastructure.Common;
+using RealworldConduit.Infrastructure.Helpers;
 using RealWorldConduit.Domain.Entities;
 using RealWorldConduit.Infrastructure;
 using RealWorldConduit.Infrastructure.Auth;
@@ -22,7 +23,7 @@ namespace RealWorldConduit.Application.Users.Commands
         public UserRegisterCommandValidator(MainDbContext dbContext)
         {
             _dbContext = dbContext;
-
+         
             RuleFor(x => x.Username).NotEmpty()
                                     .OverridePropertyName("username")
                                     .WithMessage("Invalid username");

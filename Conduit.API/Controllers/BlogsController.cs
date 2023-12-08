@@ -29,8 +29,17 @@ namespace Conduit.API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateNewBlog([FromBody] CreateBlogCommand request, CancellationToken cancellationToken)
         {
-            var newBlog = await _mediator.Send(request, cancellationToken);
-            return Ok(newBlog);
+            try
+            {
+                await _mediator.Send(request, cancellationToken);
+                var newBlog = await _mediator.Send(new GetABlogQuery(request.Title), cancellationToken);
+                return Ok(newBlog);
+
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
         }
 
         [Authorize]
@@ -45,8 +54,17 @@ namespace Conduit.API.Controllers
         [HttpPut("{title}")]
         public async Task<IActionResult> UpdateCurrentBlog([FromBody] UpdateCurrentBlogCommand request, CancellationToken cancellationToken)
         {
-            var updatedBlog = await _mediator.Send(request, cancellationToken);
-            return Ok(updatedBlog);
+            try
+            {
+                await _mediator.Send(request, cancellationToken);
+                var updatedBlog = await _mediator.Send(new GetABlogQuery(request.Title), cancellationToken);
+                return Ok(updatedBlog);
+
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
         }
 
         [Authorize]
@@ -59,18 +77,19 @@ namespace Conduit.API.Controllers
 
         [Authorize]
         [HttpPost("{title}/like")]
-        public async Task<IActionResult> LikeBlog([FromRoute] LikeBlogCommand request, CancellationToken cancellationToken)
+        public async Task<IActionResult> LikeBlogUpsert([FromRoute] LikeBlogUpsertCommand request, CancellationToken cancellationToken)
         {
-            var result = await _mediator.Send(request, cancellationToken);
-            return Ok(result);
-        }
+            try
+            {
+                await _mediator.Send(request, cancellationToken);
+                var updatedBlog = await _mediator.Send(new GetABlogQuery(request.Title), cancellationToken);
+                return Ok(updatedBlog);
 
-        [Authorize]
-        [HttpDelete("{title}/like")]
-        public async Task<IActionResult> UnlikeBlog([FromRoute] UnlikeBlogCommand request, CancellationToken cancellationToken)
-        {
-            var result = await _mediator.Send(request, cancellationToken);
-            return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
         }
     }
 }
